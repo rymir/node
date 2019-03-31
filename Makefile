@@ -17,7 +17,7 @@ dep:
 	if [ "$(CMD_DEP)" = "" ] ; then curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh ; fi
 
 dep-ensure:
-	dep ensure
+	dep ensure -update
 
 build: FORCE
 	./bin/build
