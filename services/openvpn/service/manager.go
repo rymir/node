@@ -49,7 +49,7 @@ type SessionConfigNegotiatorFactory func(secPrimitives *tls.Primitives, outbound
 
 // NATPinger defined Pinger interface for Provider
 type NATPinger interface {
-	BindPort(port int)
+	BindServicePort(port int)
 	WaitForHole() error
 	Stop()
 }
@@ -104,7 +104,7 @@ func (m *Manager) Serve(providerID identity.Identity) (err error) {
 	m.vpnServer = m.vpnServerFactory(vpnServerConfig)
 
 	// block until NATPinger punches the hole in NAT for first incoming connect or continues if service not behind NAT
-	m.natPinger.BindPort(m.serviceOptions.Port)
+	m.natPinger.BindServicePort(m.serviceOptions.Port)
 
 	log.Info(logPrefix, "starting openvpn server")
 	if err := firewall.AddInboundRule(m.serviceOptions.Protocol, m.serviceOptions.Port); err != nil {
@@ -147,6 +147,12 @@ func (m *Manager) ProvideConfig(config json.RawMessage) (session.ServiceConfigur
 	if error != nil {
 		return nil, nil, errors.Wrap(error, "parsing consumer config failed")
 	}
+
+	// We are behind NAT and port auto-configuration has failed
+	if (m.outboundIP != m.publicIP) && (m.natEventGetter.LastEvent() == traversal.EventFailure) {
+		c.Port = traversal.PingerPort
+	}
+
 	m.consumerConfig = c
 	return m.vpnServiceConfigProvider.ProvideConfig(config)
 }

@@ -86,6 +86,7 @@ type NatPinger interface {
 	PingProvider(ip string, port int) error
 	PingTarget(json.RawMessage)
 	BindPort(port int)
+	BindServicePort(port int)
 	WaitForHole() error
 	Start()
 	Stop()
@@ -459,7 +460,7 @@ func (di *Dependencies) bootstrapLocationComponents(options node.OptionsLocation
 func (di *Dependencies) bootstrapNATComponents(options node.Options) {
 	if options.ExperimentNATPunching {
 		di.NATTracker = traversal.NewEventsTracker()
-		di.NATPinger = traversal.NewPingerFactory(di.NATTracker, config.NewConfigParser())
+		di.NATPinger = traversal.NewPingerFactory(di.NATTracker, config.NewConfigParser(), traversal.NewNATProxy())
 		di.LastSessionShutdown = make(chan struct{})
 	} else {
 		di.NATTracker = &traversal.NoopEventsTracker{}

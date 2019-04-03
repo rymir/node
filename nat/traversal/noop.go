@@ -37,6 +37,9 @@ func (np *NoopPinger) PingTarget(json.RawMessage) {}
 // BindPort does nothing
 func (np *NoopPinger) BindPort(port int) {}
 
+// BindServicePort does nothing
+func (np *NoopPinger) BindServicePort(port int) {}
+
 // WaitForHole does nothing
 func (np *NoopPinger) WaitForHole() error { return nil }
 

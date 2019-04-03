@@ -33,6 +33,11 @@ type restartingServer struct {
 }
 
 func (rs *restartingServer) Start() error {
+	ovpn := rs.openvpnFactory()
+	return ovpn.Start()
+}
+
+func (rs *restartingServer) StartRestartable() error {
 	go func() {
 		for {
 			waiterProcess := make(chan error)

@@ -121,7 +121,7 @@ func newSessionConfigNegotiatorFactory(networkOptions node.OptionsNetwork, servi
 		serverIP := vpnServerIP(serviceOptions, outboundIP, publicIP, networkOptions.Localnet)
 		return &OpenvpnConfigNegotiator{
 			natEventGetter: natEventGetter,
-			vpnConfig: openvpn_service.VPNConfig{
+			vpnConfig: &openvpn_service.VPNConfig{
 				RemoteIP:        serverIP,
 				RemotePort:      serviceOptions.Port,
 				RemoteProtocol:  serviceOptions.Protocol,
@@ -135,19 +135,22 @@ func newSessionConfigNegotiatorFactory(networkOptions node.OptionsNetwork, servi
 // OpenvpnConfigNegotiator knows how to send the openvpn config to the consumer
 type OpenvpnConfigNegotiator struct {
 	natEventGetter NATEventGetter
-	vpnConfig      openvpn_service.VPNConfig
+	vpnConfig      *openvpn_service.VPNConfig
 }
 
 // ProvideConfig returns the config for user
 func (ocn *OpenvpnConfigNegotiator) ProvideConfig(json.RawMessage) (session.ServiceConfiguration, session.DestroyCallback, error) {
 	localPort := ocn.determineClientPort()
 	ocn.vpnConfig.LocalPort = localPort
-	return &ocn.vpnConfig, nil, nil
+	log.Info("remote port: ", ocn.vpnConfig.RemotePort)
+	return ocn.vpnConfig, nil, nil
 }
 
 func (ocn *OpenvpnConfigNegotiator) determineClientPort() int {
 	if ocn.natEventGetter.LastEvent() == traversal.EventFailure {
 		// port mapping failed, assume NAT hole-punching
+		// let client communicate with NATPinger port
+		ocn.vpnConfig.RemotePort = traversal.PingerPort
 		// randomize port
 		return 50221
 	}

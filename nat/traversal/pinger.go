@@ -32,6 +32,7 @@ import (
 const prefix = "[NATPinger] "
 const pingInterval = 200
 const pingTimeout = 10000
+const PingerPort = 55555
 
 // ConfigParser is able to parse a config from given raw json
 type ConfigParser interface {
@@ -48,6 +49,7 @@ type Pinger struct {
 	configParser   ConfigParser
 	stop           chan struct{}
 	once           sync.Once
+	natProxy       natProxy
 }
 
 // NatEventWaiter is responsible for waiting for nat events
@@ -56,7 +58,7 @@ type NatEventWaiter interface {
 }
 
 // NewPingerFactory returns Pinger instance
-func NewPingerFactory(waiter NatEventWaiter, parser ConfigParser) *Pinger {
+func NewPingerFactory(waiter NatEventWaiter, parser ConfigParser, proxy natProxy) *Pinger {
 	target := make(chan json.RawMessage)
 	received := make(chan struct{})
 	cancel := make(chan struct{})
@@ -68,7 +70,13 @@ func NewPingerFactory(waiter NatEventWaiter, parser ConfigParser) *Pinger {
 		natEventWaiter: waiter,
 		configParser:   parser,
 		stop:           stop,
+		natProxy:       proxy,
 	}
+}
+
+type natProxy interface {
+	handOff(conn *net.UDPConn)
+	setServicePort(port int)
 }
 
 // Start starts NAT pinger and waits for pingTarget to ping
@@ -95,7 +103,6 @@ func (p *Pinger) Start() {
 				log.Error(prefix, "failed to get connection: ", err)
 				continue
 			}
-			defer conn.Close()
 
 			go func() {
 				err := p.ping(conn)
@@ -116,9 +123,10 @@ func (p *Pinger) Start() {
 				continue
 			}
 
-			p.pingReceived <- struct{}{}
+			// p.pingReceived <- struct{}{}
 			log.Info(prefix, "ping received, waiting for a new connection")
-			conn.Close()
+
+			go p.natProxy.handOff(conn)
 		}
 	}
 }
@@ -215,9 +223,16 @@ func (p *Pinger) PingTarget(target json.RawMessage) {
 	p.pingTarget <- target
 }
 
-// BindPort gets port from session creation config and binds Pinger port to ping from
+// BindPort gets port from session creation config and binds natProxy service port
 func (p *Pinger) BindPort(port int) {
 	p.localPort = port
+}
+
+func (p *Pinger) BindServicePort(port int) {
+	p.natProxy.setServicePort(port)
+	// port to ping from
+	// TODO: for each new ping we need a new pingerPort, since we require uniq socket to connect to service port
+	p.localPort = PingerPort
 }
 
 // WaitForHole waits while ping from remote peer is received
@@ -233,6 +248,7 @@ func (p *Pinger) WaitForHole() error {
 		if event == EventSuccess {
 			return nil
 		}
+
 		log.Info(prefix, "waiting for NAT pin-hole")
 		_, ok := <-p.pingReceived
 		if !ok {
