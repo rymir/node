@@ -21,7 +21,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/gofrs/uuid"
+	"github.com/cihub/seelog"
 	"github.com/mysteriumnetwork/node/communication"
 	"github.com/mysteriumnetwork/node/market"
 	discovery_registry "github.com/mysteriumnetwork/node/market/proposals/registry"
@@ -50,17 +50,14 @@ func NewPool() *Pool {
 }
 
 // Add registers a service to running instances pool
-func (p *Pool) Add(instance *Instance) (ID, error) {
+func (p *Pool) Add(instance *Instance) {
 	p.Lock()
 	defer p.Unlock()
 
-	id, err := generateID()
-	if err != nil {
-		return id, err
-	}
+	id := instance.id
+	seelog.Infof("TEST: Pool.Add %v, %v", id, instance)
 
 	p.instances[id] = instance
-	return id, nil
 }
 
 // Del removes a service from running instances pool
@@ -79,12 +76,14 @@ var ErrNoSuchInstance = errors.New("no such instance")
 
 // Stop kills all sub-resources of instance
 func (p *Pool) Stop(id ID) error {
+	seelog.Info("TEST: Pool.Stop")
 	p.Lock()
 	defer p.Unlock()
 	return p.stop(id)
 }
 
 func (p *Pool) stop(id ID) error {
+	seelog.Infof("TEST: Pool.stop %v, %v", id)
 	instance, ok := p.instances[id]
 	if !ok {
 		return ErrNoSuchInstance
@@ -101,12 +100,15 @@ func (p *Pool) stop(id ID) error {
 		errStop.Add(instance.service.Stop())
 	}
 
+	// TODO: publish event in here
+
 	p.del(id)
 	return errStop.Errorf("ErrorCollection(%s)", ", ")
 }
 
 // StopAll kills all running instances
 func (p *Pool) StopAll() error {
+	seelog.Info("TEST: Pool.StopAll")
 	p.Lock()
 	defer p.Unlock()
 	errStop := utils.ErrorCollection{}
@@ -152,6 +154,7 @@ func NewInstance(
 
 // Instance represents a run service
 type Instance struct {
+	id           ID
 	state        State
 	options      Options
 	service      RunnableService
@@ -173,12 +176,4 @@ func (i *Instance) Proposal() market.ServiceProposal {
 // State returns the service instance state.
 func (i *Instance) State() State {
 	return i.state
-}
-
-func generateID() (ID, error) {
-	uid, err := uuid.NewV4()
-	if err != nil {
-		return ID(""), err
-	}
-	return ID(uid.String()), nil
 }

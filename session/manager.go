@@ -24,6 +24,7 @@ import (
 	"time"
 
 	log "github.com/cihub/seelog"
+	"github.com/mysterium/_vendor-20180307203655/github.com/cihub/seelog"
 	"github.com/mysteriumnetwork/node/identity"
 	"github.com/mysteriumnetwork/node/market"
 	"github.com/mysteriumnetwork/node/nat/traversal"
@@ -77,7 +78,7 @@ type NATEventGetter interface {
 	LastEvent() traversal.Event
 }
 
-// NewManager returns new session Manager
+// NewManager returns new session Manager, used by provider
 func NewManager(
 	currentProposal market.ServiceProposal,
 	idGenerator IDGenerator,
@@ -86,6 +87,7 @@ func NewManager(
 	natPingerChan func(json.RawMessage),
 	lastSessionShutdown chan struct{},
 	natEventGetter NATEventGetter,
+	serviceId string,
 ) *Manager {
 	return &Manager{
 		currentProposal:       currentProposal,
@@ -95,6 +97,7 @@ func NewManager(
 		natPingerChan:         natPingerChan,
 		lastSessionShutdown:   lastSessionShutdown,
 		natEventGetter:        natEventGetter,
+		serviceId:             serviceId,
 
 		creationLock: sync.Mutex{},
 	}
@@ -110,6 +113,7 @@ type Manager struct {
 	natPingerChan         func(json.RawMessage)
 	lastSessionShutdown   chan struct{}
 	natEventGetter        NATEventGetter
+	serviceId             string
 
 	creationLock sync.Mutex
 }
@@ -128,10 +132,11 @@ func (manager *Manager) Create(consumerID identity.Identity, issuerID identity.I
 	if err != nil {
 		return
 	}
+	seelog.Infof("TEST: Setting serviceId: %v", manager.serviceId)
+	sessionInstance.serviceID = manager.serviceId
 	sessionInstance.ConsumerID = consumerID
 	sessionInstance.done = make(chan struct{})
 	sessionInstance.Config = config
-	sessionInstance.ProposalID = proposalID
 	sessionInstance.CreatedAt = time.Now().UTC()
 
 	balanceTracker, err := manager.balanceTrackerFactory(consumerID, identity.FromAddress(manager.currentProposal.ProviderID), issuerID)
@@ -197,4 +202,7 @@ func (manager *Manager) Destroy(consumerID identity.Identity, sessionID string) 
 	close(sessionInstance.done)
 
 	return nil
+}
+
+type ServiceMap struct {
 }

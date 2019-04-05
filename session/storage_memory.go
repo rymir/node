@@ -19,6 +19,8 @@ package session
 
 import (
 	"sync"
+
+	"github.com/cihub/seelog"
 )
 
 // NewStorageMemory initiates new session storage
@@ -83,10 +85,12 @@ func (storage *StorageMemory) Remove(id ID) {
 }
 
 // RemoveForProposal removes all sessions with given proposal id
-func (storage *StorageMemory) RemoveForProposal(proposalID int) {
+func (storage *StorageMemory) RemoveForProposal(serviceId string) {
 	sessions := storage.GetAll()
 	for _, session := range sessions {
-		if session.ProposalID == proposalID {
+		seelog.Infof("Session: %v", session)
+		seelog.Infof("Session service id: %v", session.serviceID)
+		if session.serviceID == serviceId {
 			storage.Remove(session.ID)
 		}
 	}

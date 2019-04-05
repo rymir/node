@@ -17,6 +17,8 @@
 
 package service
 
+import "github.com/cihub/seelog"
+
 // Cleaner cleans up when service is stopped
 type Cleaner struct {
 	SessionStorage SessionStorage
@@ -24,10 +26,11 @@ type Cleaner struct {
 
 // SessionStorage keeps sessions and allows removing them by proposal id
 type SessionStorage interface {
-	RemoveForProposal(proposalID int)
+	RemoveForProposal(serviceId string)
 }
 
 // Cleanup removes sessions of stopped service
 func (cleaner *Cleaner) Cleanup(instance *Instance) {
-	cleaner.SessionStorage.RemoveForProposal(instance.proposal.ID)
+	seelog.Infof("Cleaning %v", instance.id)
+	cleaner.SessionStorage.RemoveForProposal(string(instance.id))
 }

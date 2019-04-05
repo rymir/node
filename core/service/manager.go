@@ -22,6 +22,8 @@ import (
 	"errors"
 
 	log "github.com/cihub/seelog"
+	"github.com/gofrs/uuid"
+	"github.com/mysterium/_vendor-20180307203655/github.com/cihub/seelog"
 	"github.com/mysteriumnetwork/node/communication"
 	"github.com/mysteriumnetwork/node/identity"
 	"github.com/mysteriumnetwork/node/market"
@@ -55,7 +57,7 @@ type NATPinger interface {
 type DialogWaiterFactory func(providerID identity.Identity, serviceType string) (communication.DialogWaiter, error)
 
 // DialogHandlerFactory initiates instance which is able to handle incoming dialogs
-type DialogHandlerFactory func(market.ServiceProposal, session.ConfigNegotiator) communication.DialogHandler
+type DialogHandlerFactory func(market.ServiceProposal, session.ConfigNegotiator, string) communication.DialogHandler
 
 // DiscoveryFactory initiates instance which is able announce service discoverability
 type DiscoveryFactory func() Discovery
@@ -128,7 +130,12 @@ func (manager *Manager) Start(providerID identity.Identity, serviceType string, 
 	}
 	proposal.SetProviderContact(providerID, providerContact)
 
-	dialogHandler := manager.dialogHandlerFactory(proposal, service)
+	id, err = generateID()
+	if err != nil {
+		return id, err
+	}
+
+	dialogHandler := manager.dialogHandlerFactory(proposal, service, string(id))
 	if err = dialogWaiter.ServeDialogs(dialogHandler); err != nil {
 		return id, err
 	}
@@ -137,6 +144,7 @@ func (manager *Manager) Start(providerID identity.Identity, serviceType string, 
 	discovery.Start(providerID, proposal)
 
 	instance := Instance{
+		id:           id,
 		state:        Starting,
 		options:      options,
 		service:      service,
@@ -145,10 +153,7 @@ func (manager *Manager) Start(providerID identity.Identity, serviceType string, 
 		discovery:    discovery,
 	}
 
-	id, err = manager.servicePool.Add(&instance)
-	if err != nil {
-		return id, err
-	}
+	manager.servicePool.Add(&instance)
 
 	go func() {
 		instance.state = Running
@@ -159,6 +164,8 @@ func (manager *Manager) Start(providerID identity.Identity, serviceType string, 
 
 		instance.state = NotRunning
 
+		seelog.Info("TEST: service.Manager.Start ended serving, stopping")
+		// TODO: fix this - Stop is invoked twice
 		stopErr := manager.servicePool.Stop(id)
 		if stopErr != nil {
 			log.Error("Service stop failed: ", stopErr)
@@ -168,6 +175,14 @@ func (manager *Manager) Start(providerID identity.Identity, serviceType string, 
 	}()
 
 	return id, nil
+}
+
+func generateID() (ID, error) {
+	uid, err := uuid.NewV4()
+	if err != nil {
+		return ID(""), err
+	}
+	return ID(uid.String()), nil
 }
 
 // List returns array of running service instances.
@@ -187,6 +202,7 @@ func (manager *Manager) Stop(id ID) error {
 		return errors.New("service not found")
 	}
 
+	seelog.Info("TEST: service.Manager.Stop")
 	err := manager.servicePool.Stop(id)
 	if err != nil {
 		return err

@@ -34,6 +34,7 @@ var (
 
 // CreateRequest structure represents message from service consumer to initiate session for given proposal id
 type CreateRequest struct {
+	// is proposal id unique??
 	ProposalID   int             `json:"proposal_id"`
 	Config       json.RawMessage `json:"config"`
 	ConsumerInfo *ConsumerInfo   `json:"consumer_info,omitempty"`
