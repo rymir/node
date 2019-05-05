@@ -11,7 +11,7 @@ ExecStartPre=-/usr/bin/docker rm %n
 ExecStartPre=/home/pi/myst-node/firewall.sh
 ExecStart=/usr/bin/docker run --rm --cap-add NET_ADMIN --net host --name %n \
         -v /home/pi/myst-node:/var/lib/mysterium-node \
-        myst-node-empty-consumer-config-fix:latest \
+        myst-node:0.7.1 \
         --keystore.lightweight --metrics.disable --testnet \
         service openvpn,wireguard --agreed-terms-and-conditions
 
