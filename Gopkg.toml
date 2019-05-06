@@ -94,13 +94,9 @@
   name = "github.com/asaskevich/EventBus"
   revision = "d46933a94f05c6657d7b923fcf5ac563ee37ec79"
 
-[[override]]
+[[constraint]]
   revision = "9e6224e4f8a61e71ff42490fa333319006d884fd"
   name = "github.com/mdlayher/wireguardctrl"
-
-[[override]]
-  revision = "258ea9dff42c0ec7540aa4b1599d09e7bfc7973b"
-  name = "github.com/mdlayher/netlink"
 
 [[constraint]]
   name = "github.com/mysteriumnetwork/wireguard-go"
